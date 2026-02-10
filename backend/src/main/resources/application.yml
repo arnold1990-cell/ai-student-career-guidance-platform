@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: edurite-backend
+  datasource:
+    url: jdbc:mysql://${DB_HOST:mysql}:${DB_PORT:3306}/${DB_NAME:edurite}?allowPublicKeyRetrieval=true&useSSL=false
+    username: ${DB_USER:edurite}
+    password: ${DB_PASSWORD:edurite}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:mysecretmysecretmysecretmysecret123456}
+    access-ms: 3600000
+    refresh-ms: 604800000
+
+app:
+  upload-dir: /uploads
+  max-upload-bytes: 5242880
+
+server:
+  port: 8080
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+logging:
+  level:
+    com.edurite.integrations: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+# TODO configure real integrations and externalized secrets for production

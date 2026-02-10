@@ -1,67 +1,41 @@
-version: "3.9"
-
 services:
-  db:
-    image: postgres:16
-    container_name: edurite-db
+  mysql:
+    image: mysql:8.4
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "${DB_PORT}:5432"
-    volumes:
-      - edurite_pgdata:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7
-    container_name: edurite-redis
-    ports:
-      - "${REDIS_PORT}:6379"
-
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
-    container_name: edurite-elasticsearch
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-    ports:
-      - "${ELASTIC_PORT}:9200"
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.1
-    container_name: edurite-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-    ports:
-      - "${ZOOKEEPER_PORT}:2181"
-
-  kafka:
-    image: confluentinc/cp-kafka:7.6.1
-    container_name: edurite-kafka
-    depends_on:
-      - zookeeper
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    ports:
-      - "${KAFKA_PORT}:9092"
+      MYSQL_DATABASE: edurite
+      MYSQL_USER: edurite
+      MYSQL_PASSWORD: edurite
+      MYSQL_ROOT_PASSWORD: root
+    ports: ["3306:3306"]
+    volumes: ["mysql_data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD","mysqladmin","ping","-h","localhost","-uroot","-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   backend:
-    build:
-      context: ./backend
-    container_name: edurite-backend
-    env_file:
-      - .env
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: edurite
+      DB_USER: edurite
+      DB_PASSWORD: edurite
+      JWT_SECRET: mysecretmysecretmysecretmysecret123456
+    ports: ["8080:8080"]
     depends_on:
-      - db
-      - redis
-      - elasticsearch
-      - kafka
-    ports:
-      - "${APP_PORT}:8080"
+      mysql:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/uploads
+
+  frontend:
+    build: ./frontend
+    ports: ["5173:5173"]
+    depends_on: [backend]
 
 volumes:
-  edurite_pgdata:
+  mysql_data:
+  uploads_data:

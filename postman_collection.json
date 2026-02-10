@@ -1,0 +1,16 @@
+{
+  "info": {"name": "EduRite MVP API", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "item": [
+    {"name":"Auth - Login","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"url":"{{baseUrl}}/api/v1/auth/login","body":{"mode":"raw","raw":"{\n  \"email\": \"student@edurite.com\",\n  \"password\": \"password\"\n}"}}},
+    {"name":"Student Dashboard","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":"{{baseUrl}}/api/v1/students/me/dashboard"}},
+    {"name":"List Careers","request":{"method":"GET","url":"{{baseUrl}}/api/v1/careers?page=0&size=20"}},
+    {"name":"Company Bursaries","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{companyToken}}"}],"url":"{{baseUrl}}/api/v1/companies/me/bursaries"}},
+    {"name":"Admin Monthly Report","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{adminToken}}"}],"url":"{{baseUrl}}/api/v1/admin/reports/monthly"}}
+  ],
+  "variable": [
+    {"key":"baseUrl","value":"http://localhost:8080"},
+    {"key":"accessToken","value":""},
+    {"key":"companyToken","value":""},
+    {"key":"adminToken","value":""}
+  ]
+}
