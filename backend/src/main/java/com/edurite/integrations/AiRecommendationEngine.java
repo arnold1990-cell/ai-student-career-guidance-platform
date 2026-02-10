@@ -1,0 +1,1 @@
+package com.edurite.integrations; import java.util.*; public interface AiRecommendationEngine { List<String> recommendCareers(Long studentId); List<String> recommendBursaries(Long studentId); List<String> recommendCandidates(Long companyId, Long bursaryId); String skillGapAnalysis(Long studentId); }

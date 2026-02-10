@@ -1,0 +1,3 @@
+package com.edurite.domain.repo;
+
+import com.edurite.domain.model.Document;import org.springframework.data.jpa.repository.JpaRepository; public interface DocumentRepository extends JpaRepository<Document, Long> {}

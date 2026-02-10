@@ -1,0 +1,3 @@
+package com.edurite.domain.repo;
+
+import com.edurite.domain.model.Bursary;import com.edurite.domain.model.Enums.BursaryStatus;import org.springframework.data.domain.*;import org.springframework.data.jpa.repository.*;import org.springframework.data.repository.query.Param;import java.time.LocalDate;import java.util.*; public interface BursaryRepository extends JpaRepository<Bursary, Long> { @Query("select b from Bursary b where (:status is null or b.status=:status)") Page<Bursary> byStatus(@Param("status") BursaryStatus status, Pageable p); List<Bursary> findByStatusAndEndDateBefore(BursaryStatus status, LocalDate date); List<Bursary> findByCompanyId(Long companyId); }
