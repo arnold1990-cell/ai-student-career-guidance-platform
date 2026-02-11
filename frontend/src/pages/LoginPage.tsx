@@ -28,9 +28,11 @@ export const LoginPage = ({
     setSubmitting(true);
     setError(null);
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     try {
       const response = await api.post<{ data?: TokenResponse } | TokenResponse>(endpoints.authLogin, {
-        email,
+        email: normalizedEmail,
         password,
       });
 
@@ -62,7 +64,11 @@ export const LoginPage = ({
       navigate(`/${nextAuth.role.toLowerCase()}`, { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message ?? 'Login failed. Please check your credentials.');
+        const apiMessage =
+          typeof err.response?.data === 'object' && err.response?.data !== null && 'message' in err.response.data
+            ? String(err.response.data.message)
+            : null;
+        setError(apiMessage ?? 'Login failed. Please check your credentials.');
       } else {
         setError('Login failed due to an unknown error.');
       }

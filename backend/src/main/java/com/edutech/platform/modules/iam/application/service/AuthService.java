@@ -34,7 +34,8 @@ public class AuthService {
     }
 
     public TokenResponse register(RegisterRequest request) {
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+        String normalizedEmail = normalizeEmail(request.getEmail());
+        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
             throw new ApiException("User already exists");
         }
 
@@ -48,7 +49,7 @@ public class AuthService {
 
         Role role = roleRepository.findByName(requestedRole).orElseThrow(() -> new ApiException("Role not found"));
         User user = new User();
-        user.setEmail(request.getEmail());
+        user.setEmail(normalizedEmail);
         user.setFullName(request.getFullName());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setStatus(AccountStatus.ACTIVE);
@@ -61,14 +62,15 @@ public class AuthService {
     }
 
     public TokenResponse login(LoginRequest request, String ipAddress) {
-        Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
+        String normalizedEmail = normalizeEmail(request.getEmail());
+        Optional<User> userOptional = userRepository.findByEmail(normalizedEmail);
         if (userOptional.isEmpty()) {
-            auditLogin(request.getEmail(), false, ipAddress);
+            auditLogin(normalizedEmail, false, ipAddress);
             throw new ApiException("Invalid credentials");
         }
         User user = userOptional.get();
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            auditLogin(request.getEmail(), false, ipAddress);
+            auditLogin(normalizedEmail, false, ipAddress);
             throw new ApiException("Invalid credentials");
         }
         if (user.getStatus() != AccountStatus.ACTIVE) {
@@ -77,7 +79,7 @@ public class AuthService {
         String refresh = UUID.randomUUID().toString();
         user.setRefreshToken(refresh);
         userRepository.save(user);
-        auditLogin(request.getEmail(), true, ipAddress);
+        auditLogin(normalizedEmail, true, ipAddress);
         return new TokenResponse(jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().getName()), refresh);
     }
 
@@ -110,7 +112,7 @@ public class AuthService {
     }
 
     public String forgotPassword(ForgotPasswordRequest request) {
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new ApiException("User not found"));
+        User user = userRepository.findByEmail(normalizeEmail(request.getEmail())).orElseThrow(() -> new ApiException("User not found"));
         PasswordResetToken token = new PasswordResetToken();
         token.setToken(UUID.randomUUID().toString());
         token.setUser(user);
@@ -139,5 +141,9 @@ public class AuthService {
         audit.setSuccess(success);
         audit.setIpAddress(ipAddress);
         auditLoginRepository.save(audit);
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 }
