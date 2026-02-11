@@ -26,7 +26,11 @@ type AuthState = {
 
 type JwtPayload = {
   role?: string;
-  sub?: string;
+};
+
+type ApiEnvelope<T> = {
+  data: T;
+  message: string;
 };
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
@@ -65,6 +69,10 @@ const parseJwtPayload = (token: string): JwtPayload | null => {
   }
 };
 
+const authHeaders = (auth: AuthState) => ({
+  Authorization: `Bearer ${auth.accessToken}`,
+});
+
 const Card = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className='card'>
     <h3>{title}</h3>
@@ -76,18 +84,20 @@ const Layout = ({
   children,
   auth,
   onLogout,
+  links,
 }: {
   children: React.ReactNode;
   auth: AuthState;
   onLogout: () => void;
+  links: Array<{ path: string; label: string }>;
 }) => (
   <div>
     <header>
       <h1>EduRite</h1>
       <nav>
-        {['/student', '/company', '/admin'].map((path) => (
-          <Link key={path} to={path}>
-            {path.slice(1)}
+        {links.map((link) => (
+          <Link key={link.path} to={link.path}>
+            {link.label}
           </Link>
         ))}
         <button className='link-button' onClick={onLogout} type='button'>
@@ -98,6 +108,10 @@ const Layout = ({
     <main>{children}</main>
   </div>
 );
+
+const Message = ({ value }: { value: string | null }) => (value ? <p className='helper-text'>{value}</p> : null);
+
+const ErrorMessage = ({ value }: { value: string | null }) => (value ? <p className='error-text'>{value}</p> : null);
 
 const Login = ({
   auth,
@@ -122,7 +136,7 @@ const Login = ({
     setError(null);
 
     try {
-      const response = await axios.post<{ data: TokenResponse }>(`${API_BASE_URL}/api/v1/auth/login`, {
+      const response = await axios.post<ApiEnvelope<TokenResponse>>(`${API_BASE_URL}/api/v1/auth/login`, {
         email,
         password,
       });
@@ -184,7 +198,7 @@ const Login = ({
             <strong>company@edutech.local</strong>, or <strong>admin@edutech.local</strong> with password{' '}
             <strong>password123</strong>.
           </p>
-          {error && <p className='error-text'>{error}</p>}
+          <ErrorMessage value={error} />
           <button disabled={submitting} type='submit'>
             {submitting ? 'Signing in...' : 'Sign in'}
           </button>
@@ -213,42 +227,238 @@ const ProtectedRoute = ({
   return <>{children}</>;
 };
 
-const Student = ({ auth, onLogout }: { auth: AuthState; onLogout: () => void }) => (
-  <Layout auth={auth} onLogout={onLogout}>
-    <div className='grid'>
-      <Card title='Dashboard'>Application progress, saved opportunities, analytics.</Card>
-      <Card title='Profile'>Personal details, qualifications, experience, CV/transcript uploads.</Card>
-      <Card title='Careers & AI'>Search careers and get AI recommendations.</Card>
-      <Card title='Bursaries'>Browse, bookmark, apply, and view saved list.</Card>
-      <Card title='Subscription'>Choose BASIC/PREMIUM and checkout flow.</Card>
-      <Card title='Notifications'>In-app alert center.</Card>
-    </div>
-  </Layout>
-);
+const StudentDashboard = ({ auth, onLogout }: { auth: AuthState; onLogout: () => void }) => {
+  const [profileStatus, setProfileStatus] = useState<string | null>(null);
+  const [docsStatus, setDocsStatus] = useState<string | null>(null);
+  const [bursaries, setBursaries] = useState<Array<{ id: number; title: string }>>([]);
+  const [notifications, setNotifications] = useState<Array<{ id: number; title: string }>>([]);
 
-const Company = ({ auth, onLogout }: { auth: AuthState; onLogout: () => void }) => (
-  <Layout auth={auth} onLogout={onLogout}>
-    <div className='grid'>
-      <Card title='Dashboard'>Status, applicants, views, completion rate.</Card>
-      <Card title='Profile & Verification'>Business details and verification status.</Card>
-      <Card title='Bursary Management'>Create/edit/submit bursaries for approval.</Card>
-      <Card title='Talent Search + Shortlist'>Filter students and shortlist candidates.</Card>
-      <Card title='Messaging'>Message shortlisted students securely.</Card>
-    </div>
-  </Layout>
-);
+  const loadProfile = async () => {
+    try {
+      const response = await axios.get<ApiEnvelope<{ interests: string; locationPreference: string; bio?: string }>>(
+        `${API_BASE_URL}/api/v1/students/profile`,
+        { headers: authHeaders(auth) },
+      );
+      const profile = response.data.data;
+      setProfileStatus(`Profile: ${profile.interests} | ${profile.locationPreference}`);
+    } catch {
+      setProfileStatus('No profile yet. Use Save profile to create one.');
+    }
+  };
 
-const Admin = ({ auth, onLogout }: { auth: AuthState; onLogout: () => void }) => (
-  <Layout auth={auth} onLogout={onLogout}>
-    <div className='grid'>
-      <Card title='Dashboard'>Analytics tiles and pending queues.</Card>
-      <Card title='Users + Bulk Upload'>Manage users and import CSV.</Card>
-      <Card title='Verification + Approval'>Approve/reject companies and bursaries.</Card>
-      <Card title='Subscriptions + Payments'>Track status and transaction oversight.</Card>
-      <Card title='Templates + Audit Logs'>Manage templates and review audit logs.</Card>
-    </div>
-  </Layout>
-);
+  const saveProfile = async () => {
+    try {
+      const response = await axios.put<ApiEnvelope<unknown>>(
+        `${API_BASE_URL}/api/v1/students/profile`,
+        {
+          interests: 'Software Engineering',
+          locationPreference: 'Remote',
+          bio: 'Motivated student looking for opportunities.',
+        },
+        { headers: authHeaders(auth) },
+      );
+      setProfileStatus(response.data.message);
+    } catch {
+      setProfileStatus('Failed to save profile.');
+    }
+  };
+
+  const listDocuments = async () => {
+    try {
+      const response = await axios.get<ApiEnvelope<string[]>>(`${API_BASE_URL}/api/v1/students/profile/documents`, {
+        headers: authHeaders(auth),
+      });
+      setDocsStatus(`Documents: ${response.data.data.length}`);
+    } catch {
+      setDocsStatus('Could not load documents.');
+    }
+  };
+
+  const searchBursaries = async () => {
+    try {
+      const response = await axios.get<ApiEnvelope<Array<{ id: number; title: string }>>>(
+        `${API_BASE_URL}/api/v1/bursaries/search`,
+        { params: { q: '' }, headers: authHeaders(auth) },
+      );
+      setBursaries(response.data.data);
+    } catch {
+      setBursaries([]);
+    }
+  };
+
+  const loadNotifications = async () => {
+    try {
+      const response = await axios.get<ApiEnvelope<Array<{ id: number; title: string }>>>(
+        `${API_BASE_URL}/api/v1/notifications`,
+        { headers: authHeaders(auth) },
+      );
+      setNotifications(response.data.data);
+    } catch {
+      setNotifications([]);
+    }
+  };
+
+  const subscribeBasic = async () => {
+    try {
+      const response = await axios.post<ApiEnvelope<{ plan: string; status: string }>>(
+        `${API_BASE_URL}/api/v1/subscriptions`,
+        null,
+        { params: { planCode: 'BASIC' }, headers: authHeaders(auth) },
+      );
+      setDocsStatus(`Subscription: ${response.data.data.plan} (${response.data.data.status})`);
+    } catch {
+      setDocsStatus('Subscription failed.');
+    }
+  };
+
+  return (
+    <Layout
+      auth={auth}
+      onLogout={onLogout}
+      links={[
+        { path: '/student', label: 'student' },
+        { path: '/student/bursaries', label: 'bursaries' },
+        { path: '/student/notifications', label: 'notifications' },
+      ]}
+    >
+      <div className='grid'>
+        <Card title='Profile'>
+          <button onClick={loadProfile} type='button'>Load profile</button>
+          <button onClick={saveProfile} type='button'>Save profile</button>
+          <Message value={profileStatus} />
+        </Card>
+        <Card title='Documents + Subscription'>
+          <button onClick={listDocuments} type='button'>Load documents</button>
+          <button onClick={subscribeBasic} type='button'>Subscribe BASIC</button>
+          <Message value={docsStatus} />
+        </Card>
+        <Card title='Bursary Search'>
+          <button onClick={searchBursaries} type='button'>Search bursaries</button>
+          <ul>{bursaries.slice(0, 5).map((item) => <li key={item.id}>{item.title}</li>)}</ul>
+        </Card>
+        <Card title='Notifications'>
+          <button onClick={loadNotifications} type='button'>Load notifications</button>
+          <ul>{notifications.slice(0, 5).map((item) => <li key={item.id}>{item.title}</li>)}</ul>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+const CompanyDashboard = ({ auth, onLogout }: { auth: AuthState; onLogout: () => void }) => {
+  const [companyName, setCompanyName] = useState('Future Tech Ltd');
+  const [onboardStatus, setOnboardStatus] = useState<string | null>(null);
+  const [bursaryStatus, setBursaryStatus] = useState<string | null>(null);
+
+  const onboardCompany = async () => {
+    try {
+      const response = await axios.post<ApiEnvelope<{ companyName: string; status: string }>>(
+        `${API_BASE_URL}/api/v1/companies/onboard`,
+        null,
+        { params: { companyName }, headers: authHeaders(auth) },
+      );
+      setOnboardStatus(`${response.data.data.companyName}: ${response.data.data.status}`);
+    } catch {
+      setOnboardStatus('Onboarding failed.');
+    }
+  };
+
+  const createBursary = async () => {
+    try {
+      const response = await axios.post<ApiEnvelope<{ title: string; status: string }>>(
+        `${API_BASE_URL}/api/v1/bursaries`,
+        null,
+        {
+          params: {
+            title: 'STEM Leadership Bursary',
+            description: 'Support for final-year students in STEM fields.',
+          },
+          headers: authHeaders(auth),
+        },
+      );
+      setBursaryStatus(`${response.data.data.title}: ${response.data.data.status}`);
+    } catch {
+      setBursaryStatus('Bursary creation failed.');
+    }
+  };
+
+  return (
+    <Layout
+      auth={auth}
+      onLogout={onLogout}
+      links={[
+        { path: '/company', label: 'company' },
+        { path: '/company/bursaries', label: 'bursary management' },
+      ]}
+    >
+      <div className='grid'>
+        <Card title='Profile & Verification'>
+          <label>
+            Company name
+            <input value={companyName} onChange={(event) => setCompanyName(event.target.value)} />
+          </label>
+          <button onClick={onboardCompany} type='button'>Submit onboarding</button>
+          <Message value={onboardStatus} />
+        </Card>
+        <Card title='Bursary Management'>
+          <button onClick={createBursary} type='button'>Create bursary</button>
+          <Message value={bursaryStatus} />
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+const AdminDashboard = ({ auth, onLogout }: { auth: AuthState; onLogout: () => void }) => {
+  const [analytics, setAnalytics] = useState<string | null>(null);
+  const [queueItems, setQueueItems] = useState<Array<{ id: number; status: string }>>([]);
+
+  const loadAnalytics = async () => {
+    try {
+      const response = await axios.get<ApiEnvelope<{ users: number; bursaries: number }>>(
+        `${API_BASE_URL}/api/v1/analytics/dashboard`,
+        { headers: authHeaders(auth) },
+      );
+      setAnalytics(`Users: ${response.data.data.users}, Bursaries: ${response.data.data.bursaries}`);
+    } catch {
+      setAnalytics('Could not load analytics dashboard.');
+    }
+  };
+
+  const loadQueue = async () => {
+    try {
+      const response = await axios.get<ApiEnvelope<Array<{ id: number; status: string }>>>(
+        `${API_BASE_URL}/api/v1/companies/verification-queue`,
+        { headers: authHeaders(auth) },
+      );
+      setQueueItems(response.data.data);
+    } catch {
+      setQueueItems([]);
+    }
+  };
+
+  return (
+    <Layout
+      auth={auth}
+      onLogout={onLogout}
+      links={[
+        { path: '/admin', label: 'admin' },
+        { path: '/admin/verification', label: 'verification queue' },
+      ]}
+    >
+      <div className='grid'>
+        <Card title='Dashboard'>
+          <button onClick={loadAnalytics} type='button'>Load analytics</button>
+          <Message value={analytics} />
+        </Card>
+        <Card title='Verification Queue'>
+          <button onClick={loadQueue} type='button'>Load pending verifications</button>
+          <ul>{queueItems.slice(0, 5).map((item) => <li key={item.id}>#{item.id} - {item.status}</li>)}</ul>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
 
 const App = () => {
   const [auth, setAuth] = useState<AuthState | null>(() => loadAuthState());
@@ -271,26 +481,26 @@ const App = () => {
         <Route path='/' element={<Navigate to={defaultRoute} replace />} />
         <Route path='/login' element={<Login auth={auth} onLogin={setAuth} />} />
         <Route
-          path='/student'
+          path='/student/*'
           element={
             <ProtectedRoute auth={auth} expectedRole='STUDENT'>
-              <Student auth={auth as AuthState} onLogout={logout} />
+              <StudentDashboard auth={auth as AuthState} onLogout={logout} />
             </ProtectedRoute>
           }
         />
         <Route
-          path='/company'
+          path='/company/*'
           element={
             <ProtectedRoute auth={auth} expectedRole='COMPANY'>
-              <Company auth={auth as AuthState} onLogout={logout} />
+              <CompanyDashboard auth={auth as AuthState} onLogout={logout} />
             </ProtectedRoute>
           }
         />
         <Route
-          path='/admin'
+          path='/admin/*'
           element={
             <ProtectedRoute auth={auth} expectedRole='ADMIN'>
-              <Admin auth={auth as AuthState} onLogout={logout} />
+              <AdminDashboard auth={auth as AuthState} onLogout={logout} />
             </ProtectedRoute>
           }
         />
