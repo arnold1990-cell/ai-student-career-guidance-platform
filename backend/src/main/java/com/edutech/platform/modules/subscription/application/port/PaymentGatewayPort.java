@@ -1,5 +1,7 @@
 package com.edutech.platform.modules.subscription.application.port;
 
+import java.math.BigDecimal;
+
 public interface PaymentGatewayPort {
-    String initializePayment(double amount, String planCode, Long userId);
+    String initializePayment(BigDecimal amount, String planCode, Long userId);
 }
