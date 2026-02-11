@@ -1,1 +1,0 @@
-package com.edurite.integrations; import java.util.*; public interface PaymentGateway { Map<String,String> createCheckout(Long studentId, String plan); boolean confirmPaymentWebhook(String providerRef); }
