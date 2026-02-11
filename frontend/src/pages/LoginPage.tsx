@@ -2,10 +2,9 @@ import { useState } from 'react';
 import axios from 'axios';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
-import { AUTH_STORAGE_KEY, parseJwtPayload } from '../lib/auth';
+import { endpoints, api } from '../lib/api';
+import { parseJwtPayload, saveAuthState } from '../lib/auth';
 import type { AuthState, TokenResponse } from '../types';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 
 export const LoginPage = ({
   auth,
@@ -30,19 +29,21 @@ export const LoginPage = ({
     setError(null);
 
     try {
-      const response = await axios.post<{ data: TokenResponse }>(`${API_BASE_URL}/api/v1/auth/login`, {
+      const response = await api.post<{ data?: TokenResponse } | TokenResponse>(endpoints.authLogin, {
         email,
         password,
       });
 
-      const tokenPayload = response.data.data;
-      if (!tokenPayload?.accessToken || !tokenPayload?.refreshToken) {
+      const responseBody = response.data as { data?: TokenResponse } | TokenResponse;
+      const tokenPayload = 'accessToken' in responseBody ? responseBody : responseBody.data;
+      if (!tokenPayload?.accessToken) {
         setError('Unexpected login response from server.');
         return;
       }
 
       const decodedToken = parseJwtPayload(tokenPayload.accessToken);
       const resolvedRole = decodedToken?.role?.toUpperCase();
+      const resolvedEmail = decodedToken?.sub ?? email;
       if (!resolvedRole) {
         setError('Unexpected login response from server. Missing role information.');
         return;
@@ -50,12 +51,12 @@ export const LoginPage = ({
 
       const nextAuth: AuthState = {
         accessToken: tokenPayload.accessToken,
-        refreshToken: tokenPayload.refreshToken,
+        refreshToken: tokenPayload.refreshToken ?? '',
         role: resolvedRole,
-        email,
+        email: resolvedEmail,
       };
 
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth));
+      saveAuthState(nextAuth);
       onLogin(nextAuth);
       navigate(`/${resolvedRole.toLowerCase()}`, { replace: true });
     } catch (err) {

@@ -1,6 +1,6 @@
 export type TokenResponse = {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
 };
 
 export type AuthState = {

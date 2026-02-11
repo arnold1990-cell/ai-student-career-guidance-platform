@@ -10,13 +10,44 @@ export const loadAuthState = (): AuthState | null => {
 
   try {
     const parsed = JSON.parse(raw) as AuthState;
-    if (!parsed.accessToken || !parsed.refreshToken || !parsed.role) {
+    if (!parsed.accessToken || !parsed.role) {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
       return null;
     }
-    return parsed;
+
+    return {
+      accessToken: parsed.accessToken,
+      refreshToken: parsed.refreshToken ?? '',
+      role: parsed.role,
+      email: parsed.email ?? '',
+    };
   } catch {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
     return null;
   }
+};
+
+export const saveAuthState = (state: AuthState): void => {
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
+};
+
+export const clearAuthState = (): void => {
+  localStorage.removeItem(AUTH_STORAGE_KEY);
+};
+
+export const getAccessToken = (): string | null => {
+  return loadAuthState()?.accessToken ?? null;
+};
+
+export const getAuthHeader = (): Record<string, string> => {
+  const token = getAccessToken();
+  if (!token) {
+    return {};
+  }
+
+  return {
+    Authorization: `Bearer ${token}`,
+  };
 };
 
 export const parseJwtPayload = (token: string): JwtPayload | null => {
