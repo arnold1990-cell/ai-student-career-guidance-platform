@@ -1,17 +1,21 @@
 package com.edutech.platform.shared.config;
 
 import com.edutech.platform.shared.security.JwtAuthFilter;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -22,23 +26,35 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final UserDetailsService userDetailsService;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, UserDetailsService userDetailsService) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.userDetailsService = userDetailsService;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable());
-        http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
-        http.httpBasic(httpBasic -> httpBasic.disable());
-        http.formLogin(form -> form.disable());
-        http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-        http.exceptionHandling(ex -> ex.authenticationEntryPoint(unauthorizedEntryPoint()));
-        http.authorizeHttpRequests(auth -> auth
+        http.csrf().disable();
+        http.cors().configurationSource(corsConfigurationSource());
+        http.httpBasic().disable();
+        http.formLogin().disable();
+        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+        http.exceptionHandling().authenticationEntryPoint(unauthorizedEntryPoint());
+
+        http.authorizeHttpRequests()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/v1/auth/**", "/actuator/health", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                .anyRequest().authenticated());
+                .requestMatchers(
+                        "/api/auth/**",
+                        "/api/v1/auth/**",
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/actuator/health"
+                ).permitAll()
+                .anyRequest().authenticated();
+
+        http.userDetailsService(userDetailsService);
         http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
@@ -46,10 +62,29 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("Authorization"));
+
+        List<String> allowedOrigins = new ArrayList<>();
+        allowedOrigins.add("http://localhost:*");
+        allowedOrigins.add("http://127.0.0.1:*");
+        configuration.setAllowedOriginPatterns(allowedOrigins);
+
+        List<String> methods = new ArrayList<>();
+        methods.add("GET");
+        methods.add("POST");
+        methods.add("PUT");
+        methods.add("DELETE");
+        methods.add("PATCH");
+        methods.add("OPTIONS");
+        configuration.setAllowedMethods(methods);
+
+        List<String> headers = new ArrayList<>();
+        headers.add("*");
+        configuration.setAllowedHeaders(headers);
+
+        List<String> exposedHeaders = new ArrayList<>();
+        exposedHeaders.add("Authorization");
+        configuration.setExposedHeaders(exposedHeaders);
+
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -64,6 +99,6 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationEntryPoint unauthorizedEntryPoint() {
-        return (request, response, authException) -> response.sendError(401, "Unauthorized");
+        return new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED);
     }
 }
