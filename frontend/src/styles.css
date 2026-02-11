@@ -102,3 +102,28 @@ main {
   font-size: 0.85rem;
   line-height: 1.4;
 }
+
+.card button {
+  margin-right: 8px;
+  margin-bottom: 8px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.card input {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px;
+  margin: 6px 0 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.card ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
