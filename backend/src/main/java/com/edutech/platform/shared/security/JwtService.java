@@ -19,12 +19,13 @@ public class JwtService {
     @Value("${app.jwt.access-expiry-seconds}")
     private long accessExpirySeconds;
 
-    public String generateAccessToken(String subject, String role) {
+    public String generateAccessToken(Long userId, String subject, String role) {
         Instant now = Instant.now();
         Instant expiration = now.plusSeconds(accessExpirySeconds);
         return Jwts.builder()
                 .subject(subject)
                 .claim("role", role)
+                .claim("userId", userId)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiration))
                 .signWith(getKey())

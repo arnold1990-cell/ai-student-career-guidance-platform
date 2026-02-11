@@ -3,10 +3,10 @@ import type { AuthState } from '../types';
 
 export const Layout = ({ auth, onLogout }: { auth: AuthState; onLogout: () => void }) => {
   const navItems = [
-    { path: '/student', label: 'Student' },
-    { path: '/company', label: 'Company' },
-    { path: '/admin', label: 'Admin' },
-  ];
+    { path: '/student', label: 'Student', role: 'STUDENT' },
+    { path: '/company', label: 'Company', role: 'COMPANY' },
+    { path: '/admin', label: 'Admin', role: 'ADMIN' },
+  ].filter((item) => item.role === auth.role);
 
   return (
     <div>

@@ -33,17 +33,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
-            Claims claims = jwtService.parseClaims(token);
-            Optional<User> userOptional = userRepository.findByEmail(claims.getSubject());
-            if (userOptional.isPresent()) {
-                User user = userOptional.get();
-                AuthenticatedUser principal = new AuthenticatedUser(user.getId(), user.getEmail(), user.getRole().getName());
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        principal,
-                        null,
-                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().getName()))
-                );
-                SecurityContextHolder.getContext().setAuthentication(auth);
+            try {
+                Claims claims = jwtService.parseClaims(token);
+                Optional<User> userOptional = userRepository.findByEmail(claims.getSubject());
+                if (userOptional.isPresent()) {
+                    User user = userOptional.get();
+                    AuthenticatedUser principal = new AuthenticatedUser(user.getId(), user.getEmail(), user.getRole().getName());
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                            principal,
+                            null,
+                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().getName()))
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            } catch (Exception ignored) {
+                SecurityContextHolder.clearContext();
             }
         }
         filterChain.doFilter(request, response);

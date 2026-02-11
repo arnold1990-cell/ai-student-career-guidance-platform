@@ -1,56 +1,29 @@
 import type { AuthState, JwtPayload } from '../types';
 
-export const AUTH_STORAGE_KEY = 'edurite-auth';
+export const AUTH_TOKEN_STORAGE_KEY = 'edutech.jwt';
 
-export const loadAuthState = (): AuthState | null => {
-  const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as AuthState;
-    if (!parsed.accessToken || !parsed.role) {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-      return null;
-    }
-
-    return {
-      accessToken: parsed.accessToken,
-      refreshToken: parsed.refreshToken ?? '',
-      role: parsed.role,
-      email: parsed.email ?? '',
-    };
-  } catch {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    return null;
-  }
+export const saveToken = (token: string): void => {
+  localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
 };
 
-export const saveAuthState = (state: AuthState): void => {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
+export const getToken = (): string | null => {
+  return localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
 };
 
-export const clearAuthState = (): void => {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-};
-
-export const getAccessToken = (): string | null => {
-  return loadAuthState()?.accessToken ?? null;
+export const clearToken = (): void => {
+  localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
 };
 
 export const getAuthHeader = (): Record<string, string> => {
-  const token = getAccessToken();
+  const token = getToken();
   if (!token) {
     return {};
   }
 
-  return {
-    Authorization: `Bearer ${token}`,
-  };
+  return { Authorization: `Bearer ${token}` };
 };
 
-export const parseJwtPayload = (token: string): JwtPayload | null => {
+const decodeJwtPayload = (token: string): JwtPayload | null => {
   const payloadSegment = token.split('.')[1];
   if (!payloadSegment) {
     return null;
@@ -64,4 +37,27 @@ export const parseJwtPayload = (token: string): JwtPayload | null => {
   } catch {
     return null;
   }
+};
+
+export const getUserFromToken = (): AuthState | null => {
+  const token = getToken();
+  if (!token) {
+    return null;
+  }
+
+  const payload = decodeJwtPayload(token);
+  const role = payload?.role?.toUpperCase();
+  if (!payload?.sub || (role !== 'STUDENT' && role !== 'ADMIN' && role !== 'COMPANY')) {
+    return null;
+  }
+
+  if (typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now()) {
+    return null;
+  }
+
+  return {
+    token,
+    role,
+    email: payload.sub,
+  };
 };

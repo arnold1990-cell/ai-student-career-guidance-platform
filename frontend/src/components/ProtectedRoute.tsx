@@ -1,13 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import type { AuthState } from '../types';
 
-export const ProtectedRoute = ({
-  auth,
-  expectedRole,
-}: {
-  auth: AuthState | null;
-  expectedRole?: string;
-}) => {
+export const ProtectedRoute = ({ auth, expectedRole }: { auth: AuthState | null; expectedRole?: AuthState['role'] }) => {
   const location = useLocation();
 
   if (!auth) {

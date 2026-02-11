@@ -6,6 +6,7 @@ import com.edutech.platform.shared.api.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Instant;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -27,6 +28,16 @@ public class AuthController {
     public ApiResponse<TokenResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpServletRequest) {
         String ip = httpServletRequest.getRemoteAddr();
         return new ApiResponse<>(Instant.now(), httpServletRequest.getRequestURI(), "Logged in", authService.login(request, ip));
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<AuthMeResponse> me(Authentication authentication, HttpServletRequest request) {
+        return new ApiResponse<>(
+                Instant.now(),
+                request.getRequestURI(),
+                "Current user",
+                authService.me(authentication.getName())
+        );
     }
 
     @PostMapping("/refresh")
