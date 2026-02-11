@@ -24,6 +24,11 @@ type AuthState = {
   email: string;
 };
 
+type JwtPayload = {
+  role?: string;
+  sub?: string;
+};
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 const AUTH_STORAGE_KEY = 'edurite-auth';
 
@@ -39,6 +44,22 @@ const loadAuthState = (): AuthState | null => {
       return null;
     }
     return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const parseJwtPayload = (token: string): JwtPayload | null => {
+  const payloadSegment = token.split('.')[1];
+  if (!payloadSegment) {
+    return null;
+  }
+
+  try {
+    const normalizedPayload = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=');
+    const decoded = window.atob(paddedPayload);
+    return JSON.parse(decoded) as JwtPayload;
   } catch {
     return null;
   }
@@ -88,7 +109,6 @@ const Login = ({
   const navigate = useNavigate();
   const [email, setEmail] = useState('student@edutech.local');
   const [password, setPassword] = useState('password123');
-  const [role, setRole] = useState<'STUDENT' | 'COMPANY' | 'ADMIN'>('STUDENT');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,16 +133,23 @@ const Login = ({
         return;
       }
 
+      const decodedToken = parseJwtPayload(tokenPayload.accessToken);
+      const resolvedRole = decodedToken?.role?.toUpperCase();
+      if (!resolvedRole) {
+        setError('Unexpected login response from server. Missing role information.');
+        return;
+      }
+
       const nextAuth: AuthState = {
         accessToken: tokenPayload.accessToken,
         refreshToken: tokenPayload.refreshToken,
-        role,
+        role: resolvedRole,
         email,
       };
 
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth));
       onLogin(nextAuth);
-      navigate(`/${role.toLowerCase()}`, { replace: true });
+      navigate(`/${resolvedRole.toLowerCase()}`, { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message ?? 'Login failed. Please check your credentials.');
@@ -152,14 +179,11 @@ const Login = ({
               required
             />
           </label>
-          <label>
-            Dashboard Role
-            <select value={role} onChange={(event) => setRole(event.target.value as 'STUDENT' | 'COMPANY' | 'ADMIN')}>
-              <option value='STUDENT'>Student</option>
-              <option value='COMPANY'>Company</option>
-              <option value='ADMIN'>Admin</option>
-            </select>
-          </label>
+          <p className='helper-text'>
+            Use seeded accounts such as <strong>student@edutech.local</strong>,{' '}
+            <strong>company@edutech.local</strong>, or <strong>admin@edutech.local</strong> with password{' '}
+            <strong>password123</strong>.
+          </p>
           {error && <p className='error-text'>{error}</p>}
           <button disabled={submitting} type='submit'>
             {submitting ? 'Signing in...' : 'Sign in'}
