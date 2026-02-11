@@ -6,7 +6,10 @@ import com.edutech.platform.shared.api.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Instant;
-import org.springframework.security.core.Authentication;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -31,12 +34,16 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ApiResponse<AuthMeResponse> me(Authentication authentication, HttpServletRequest request) {
+    public ApiResponse<AuthMeResponse> me(@AuthenticationPrincipal UserDetails principal, HttpServletRequest request) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
         return new ApiResponse<>(
                 Instant.now(),
                 request.getRequestURI(),
                 "Current user",
-                authService.me(authentication.getName())
+                authService.me(principal.getUsername())
         );
     }
 

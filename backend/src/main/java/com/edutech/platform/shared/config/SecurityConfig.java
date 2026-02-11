@@ -34,31 +34,24 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf().disable();
-        http.cors().configurationSource(corsConfigurationSource());
-        http.httpBasic().disable();
-        http.formLogin().disable();
-        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
-        http.exceptionHandling().authenticationEntryPoint(unauthorizedEntryPoint());
+        http
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .httpBasic(httpBasic -> httpBasic.disable())
+                .formLogin(formLogin -> formLogin.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedEntryPoint()))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/health").permitAll()
+                        .requestMatchers("/api/v1/admin/**", "/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/students/**", "/student/**").hasRole("STUDENT")
+                        .requestMatchers("/api/v1/companies/**", "/company/**").hasRole("COMPANY")
+                        .anyRequest().authenticated())
+                .userDetailsService(userDetailsService)
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        http.authorizeHttpRequests()
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers(
-                        "/api/auth/**",
-                        "/api/v1/auth/login",
-                        "/api/v1/auth/register",
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**",
-                        "/swagger-ui.html",
-                        "/actuator/health"
-                ).permitAll()
-                .requestMatchers("/api/v1/admin/**", "/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/v1/students/**", "/student/**").hasRole("STUDENT")
-                .requestMatchers("/api/v1/companies/**", "/company/**").hasRole("COMPANY")
-                .anyRequest().authenticated();
-
-        http.userDetailsService(userDetailsService);
-        http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
