@@ -37,7 +37,16 @@ public class AuthService {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new ApiException("User already exists");
         }
-        Role role = roleRepository.findByName(request.getRole().toUpperCase()).orElseThrow(() -> new ApiException("Role not found"));
+
+        String requestedRole = request.getRole().toUpperCase();
+        if ("ADMIN".equals(requestedRole)) {
+            throw new ApiException("Admin registration is not allowed");
+        }
+        if (!"STUDENT".equals(requestedRole) && !"COMPANY".equals(requestedRole)) {
+            throw new ApiException("Unsupported role");
+        }
+
+        Role role = roleRepository.findByName(requestedRole).orElseThrow(() -> new ApiException("Role not found"));
         User user = new User();
         user.setEmail(request.getEmail());
         user.setFullName(request.getFullName());
@@ -47,7 +56,7 @@ public class AuthService {
         String refresh = UUID.randomUUID().toString();
         user.setRefreshToken(refresh);
         userRepository.save(user);
-        String access = jwtService.generateAccessToken(user.getEmail(), role.getName());
+        String access = jwtService.generateAccessToken(user.getId(), user.getEmail(), role.getName());
         return new TokenResponse(access, refresh);
     }
 
@@ -69,7 +78,7 @@ public class AuthService {
         user.setRefreshToken(refresh);
         userRepository.save(user);
         auditLogin(request.getEmail(), true, ipAddress);
-        return new TokenResponse(jwtService.generateAccessToken(user.getEmail(), user.getRole().getName()), refresh);
+        return new TokenResponse(jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().getName()), refresh);
     }
 
     public TokenResponse refresh(RefreshRequest request) {
@@ -78,7 +87,12 @@ public class AuthService {
         String refresh = UUID.randomUUID().toString();
         user.setRefreshToken(refresh);
         userRepository.save(user);
-        return new TokenResponse(jwtService.generateAccessToken(user.getEmail(), user.getRole().getName()), refresh);
+        return new TokenResponse(jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().getName()), refresh);
+    }
+
+    public AuthMeResponse me(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new ApiException("User not found"));
+        return new AuthMeResponse(user.getId(), user.getEmail(), user.getFullName(), user.getRole().getName());
     }
 
     public void logout(RefreshRequest request) {

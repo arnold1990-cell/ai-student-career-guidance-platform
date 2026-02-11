@@ -4,9 +4,8 @@ import { Card } from '../components/Card';
 import { api, endpoints } from '../lib/api';
 
 type AdminSummary = {
-  usersCount?: number;
-  pendingApprovals?: number;
-  activeSubscriptions?: number;
+  users?: number;
+  bursaries?: number;
 };
 
 export const AdminPage = () => {
@@ -19,9 +18,8 @@ export const AdminPage = () => {
     setError(null);
 
     try {
-      const response = await api.get<AdminSummary | { data: AdminSummary }>(endpoints.adminHealth);
-      const payload = 'data' in response.data ? response.data.data : response.data;
-      setSummary(payload);
+      const response = await api.get<{ data: AdminSummary }>(endpoints.adminDashboard);
+      setSummary(response.data.data);
     } catch (loadError) {
       if (axios.isAxiosError(loadError)) {
         setError(loadError.response?.data?.message ?? 'Could not load admin summary.');
@@ -39,22 +37,18 @@ export const AdminPage = () => {
 
   return (
     <div className='grid'>
-      <Card title='Admin secure endpoint check'>
+      <Card title='Admin dashboard'>
         <button type='button' onClick={() => void loadSummary()} disabled={loading}>
           {loading ? 'Loading...' : 'Reload summary'}
         </button>
         {error && <p className='error-text'>{error}</p>}
         {summary && (
           <ul>
-            <li>Users: {summary.usersCount ?? 0}</li>
-            <li>Pending approvals: {summary.pendingApprovals ?? 0}</li>
-            <li>Active subscriptions: {summary.activeSubscriptions ?? 0}</li>
+            <li>Users: {summary.users ?? 0}</li>
+            <li>Bursaries: {summary.bursaries ?? 0}</li>
           </ul>
         )}
       </Card>
-
-      <Card title='Verification + Approval'>Approve or reject company and bursary submissions.</Card>
-      <Card title='Users + Audit Logs'>Manage users, roles, and review tracked system actions.</Card>
     </div>
   );
 };

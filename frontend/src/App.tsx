@@ -2,27 +2,19 @@ import { useMemo, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { clearAuthState, loadAuthState } from './lib/auth';
+import { clearToken, getUserFromToken } from './lib/auth';
 import { AdminPage } from './pages/AdminPage';
 import { CompanyPage } from './pages/CompanyPage';
 import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage';
 import { StudentPage } from './pages/StudentPage';
 import type { AuthState } from './types';
 
-const RouteError = () => {
-  return (
-    <div className='card'>
-      <h2>Route unavailable</h2>
-      <p>Sorry, this page could not be rendered. Please use the navigation to continue.</p>
-    </div>
-  );
-};
-
 export const App = () => {
-  const [auth, setAuth] = useState<AuthState | null>(() => loadAuthState());
+  const [auth, setAuth] = useState<AuthState | null>(() => getUserFromToken());
 
   const logout = () => {
-    clearAuthState();
+    clearToken();
     setAuth(null);
   };
 
@@ -39,9 +31,10 @@ export const App = () => {
       <Routes>
         <Route path='/' element={<Navigate to={defaultRoute} replace />} />
         <Route path='/login' element={<LoginPage auth={auth} onLogin={setAuth} />} />
+        <Route path='/register' element={<RegisterPage auth={auth} />} />
 
         <Route element={<ProtectedRoute auth={auth} />}>
-          <Route path='/' element={auth ? <Layout auth={auth} onLogout={logout} /> : <RouteError />}> 
+          <Route path='/' element={auth ? <Layout auth={auth} onLogout={logout} /> : <Navigate to='/login' replace />}>
             <Route element={<ProtectedRoute auth={auth} expectedRole='STUDENT' />}>
               <Route path='student' element={<StudentPage />} />
             </Route>
@@ -51,7 +44,6 @@ export const App = () => {
             <Route element={<ProtectedRoute auth={auth} expectedRole='ADMIN' />}>
               <Route path='admin' element={<AdminPage />} />
             </Route>
-            <Route path='*' element={<RouteError />} />
           </Route>
         </Route>
 

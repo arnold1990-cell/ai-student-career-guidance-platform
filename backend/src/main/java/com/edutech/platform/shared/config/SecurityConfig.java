@@ -1,7 +1,6 @@
 package com.edutech.platform.shared.config;
 
 import com.edutech.platform.shared.security.JwtAuthFilter;
-import java.util.ArrayList;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,12 +45,16 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
                         "/api/auth/**",
-                        "/api/v1/auth/**",
+                        "/api/v1/auth/login",
+                        "/api/v1/auth/register",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html",
                         "/actuator/health"
                 ).permitAll()
+                .requestMatchers("/api/v1/admin/**", "/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/students/**", "/student/**").hasRole("STUDENT")
+                .requestMatchers("/api/v1/companies/**", "/company/**").hasRole("COMPANY")
                 .anyRequest().authenticated();
 
         http.userDetailsService(userDetailsService);
@@ -62,29 +65,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        List<String> allowedOrigins = new ArrayList<>();
-        allowedOrigins.add("http://localhost:*");
-        allowedOrigins.add("http://127.0.0.1:*");
-        configuration.setAllowedOriginPatterns(allowedOrigins);
-
-        List<String> methods = new ArrayList<>();
-        methods.add("GET");
-        methods.add("POST");
-        methods.add("PUT");
-        methods.add("DELETE");
-        methods.add("PATCH");
-        methods.add("OPTIONS");
-        configuration.setAllowedMethods(methods);
-
-        List<String> headers = new ArrayList<>();
-        headers.add("*");
-        configuration.setAllowedHeaders(headers);
-
-        List<String> exposedHeaders = new ArrayList<>();
-        exposedHeaders.add("Authorization");
-        configuration.setExposedHeaders(exposedHeaders);
-
+        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

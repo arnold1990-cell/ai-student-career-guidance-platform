@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
-import { endpoints, api } from '../lib/api';
-import { parseJwtPayload, saveAuthState } from '../lib/auth';
-import type { AuthState, TokenResponse } from '../types';
+import { api, endpoints } from '../lib/api';
+import { getUserFromToken, saveToken } from '../lib/auth';
+import type { AuthState, MeResponse, TokenResponse } from '../types';
 
 export const LoginPage = ({
   auth,
@@ -34,31 +34,32 @@ export const LoginPage = ({
         password,
       });
 
-      const responseBody = response.data as { data?: TokenResponse } | TokenResponse;
+      const responseBody = response.data;
       const tokenPayload = 'accessToken' in responseBody ? responseBody : responseBody.data;
       if (!tokenPayload?.accessToken) {
         setError('Unexpected login response from server.');
         return;
       }
 
-      const decodedToken = parseJwtPayload(tokenPayload.accessToken);
-      const resolvedRole = decodedToken?.role?.toUpperCase();
-      const resolvedEmail = decodedToken?.sub ?? email;
-      if (!resolvedRole) {
-        setError('Unexpected login response from server. Missing role information.');
+      saveToken(tokenPayload.accessToken);
+
+      const meResponse = await api.get<{ data: MeResponse } | MeResponse>(endpoints.authMe);
+      const meData = 'data' in meResponse.data ? meResponse.data.data : meResponse.data;
+
+      const authFromToken = getUserFromToken();
+      if (!authFromToken) {
+        setError('Received an invalid token from server.');
         return;
       }
 
       const nextAuth: AuthState = {
-        accessToken: tokenPayload.accessToken,
-        refreshToken: tokenPayload.refreshToken ?? '',
-        role: resolvedRole,
-        email: resolvedEmail,
+        token: tokenPayload.accessToken,
+        role: meData.role,
+        email: meData.email,
       };
 
-      saveAuthState(nextAuth);
       onLogin(nextAuth);
-      navigate(`/${resolvedRole.toLowerCase()}`, { replace: true });
+      navigate(`/${nextAuth.role.toLowerCase()}`, { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message ?? 'Login failed. Please check your credentials.');
@@ -88,16 +89,14 @@ export const LoginPage = ({
               required
             />
           </label>
-          <p className='helper-text'>
-            Use seeded accounts such as <strong>student@edutech.local</strong>,{' '}
-            <strong>company@edutech.local</strong>, or <strong>admin@edutech.local</strong> with password{' '}
-            <strong>password123</strong>.
-          </p>
           {error && <p className='error-text'>{error}</p>}
           <button disabled={submitting} type='submit'>
             {submitting ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
+        <p className='helper-text'>
+          New here? <Link to='/register'>Create an account</Link>
+        </p>
       </Card>
     </main>
   );
