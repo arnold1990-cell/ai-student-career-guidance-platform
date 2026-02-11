@@ -1,22 +1,76 @@
-# secrets
-.env
-*.env
+# Maven / Gradle
+**/target/
+**/build/
+.gradle/
+.mvn/wrapper/maven-wrapper.jar
 
 # Java
-**/target/
-**/*.log
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+replay_pid*
 
-# Node
-**/node_modules/
-**/dist/
+# Spring Boot
+*.log
+logs/
+log/
 
-# IDE
-**/.idea/
-**/.vscode/
+# Environment / config overrides
+.env
+.env.*
+**/application-local.yml
+**/application-local.yaml
+**/application-dev.yml
+**/application-dev.yaml
+**/application-prod.yml
+**/application-prod.yaml
+**/application-secrets.yml
+**/application-secrets.yaml
 
-# OS
+# IDE - IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# IDE - Eclipse
+.project
+.classpath
+.settings/
+
+# IDE - VS Code
+.vscode/
+
+# OS files
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# uploads/runtime
-uploads/
+# Database files / local persistence
+*.db
+*.sqlite
+*.sqlite3
+*.h2.db
+*.mv.db
+
+# Redis / cache / temp
+redis-data/
+cache/
+tmp/
+temp/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Coverage / reports
+coverage/
+*.lcov
+surefire-reports/
+
+# Docker overrides
+**/.docker/
