@@ -2,6 +2,7 @@ package com.edutech.platform.modules.subscription.domain.entity;
 
 import com.edutech.platform.shared.audit.BaseEntity;
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,5 +12,6 @@ public class PaymentTransaction extends BaseEntity {
     private Long id;
     private String providerRef;
     private String status;
-    private double amount;
+    @Column(name = "amount", precision = 12, scale = 2, nullable = false)
+    private BigDecimal amount;
 }
