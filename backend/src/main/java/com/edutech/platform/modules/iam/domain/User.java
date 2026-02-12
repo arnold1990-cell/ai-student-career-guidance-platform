@@ -40,6 +40,9 @@ public class User {
         if (id == null) {
             id = UUID.randomUUID();
         }
+        if (status == null) {
+            status = UserStatus.ACTIVE;
+        }
         if (createdAt == null) {
             createdAt = OffsetDateTime.now();
         }

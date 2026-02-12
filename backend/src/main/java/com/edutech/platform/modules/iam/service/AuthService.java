@@ -12,6 +12,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -40,13 +41,14 @@ public class AuthService {
         this.adminInvitationCode = adminInvitationCode;
     }
 
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
         if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new IllegalArgumentException("Email already exists");
         }
 
-        UserRole role = request.getRole() == null ? UserRole.STUDENT : request.getRole();
+        UserRole role = request.getResolvedRole();
 
         if (role == UserRole.COMPANY) {
             validateInvitationCode(request.getInvitationCode(), companyInvitationCode, "COMPANY");
@@ -60,7 +62,7 @@ public class AuthService {
         user.setRole(role);
         user.setStatus(UserStatus.ACTIVE);
 
-        User savedUser = userRepository.save(user);
+        User savedUser = userRepository.saveAndFlush(user);
         return buildAuthResponse(savedUser);
     }
 

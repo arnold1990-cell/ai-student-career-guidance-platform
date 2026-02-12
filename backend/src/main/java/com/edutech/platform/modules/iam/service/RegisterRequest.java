@@ -28,6 +28,7 @@ public class RegisterRequest {
     public void setPassword(String password) { this.password = password; }
     public UserRole getRole() { return role; }
     public void setRole(UserRole role) { this.role = role; }
+    public UserRole getResolvedRole() { return role == null ? UserRole.STUDENT : role; }
     public String getInvitationCode() { return invitationCode; }
     public void setInvitationCode(String invitationCode) { this.invitationCode = invitationCode; }
 }
