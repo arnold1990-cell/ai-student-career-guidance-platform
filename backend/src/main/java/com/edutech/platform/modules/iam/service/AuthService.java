@@ -6,11 +6,15 @@ import com.edutech.platform.modules.iam.domain.UserStatus;
 import com.edutech.platform.modules.iam.infrastructure.repository.UserRepository;
 import com.edutech.platform.shared.security.JwtService;
 import com.edutech.platform.shared.security.LoginAttemptService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 @Service
 public class AuthService {
@@ -19,15 +23,21 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final LoginAttemptService loginAttemptService;
+    private final String companyInvitationCode;
+    private final String adminInvitationCode;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager, JwtService jwtService,
-                       LoginAttemptService loginAttemptService) {
+                       LoginAttemptService loginAttemptService,
+                       @Value("${app.registration.company-invitation-code:}") String companyInvitationCode,
+                       @Value("${app.registration.admin-invitation-code:}") String adminInvitationCode) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.loginAttemptService = loginAttemptService;
+        this.companyInvitationCode = companyInvitationCode;
+        this.adminInvitationCode = adminInvitationCode;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -36,11 +46,13 @@ public class AuthService {
             throw new IllegalArgumentException("Email already exists");
         }
 
-        UserRole role = request.getRole();
-        if (role != null && role != UserRole.STUDENT) {
-            throw new IllegalArgumentException("Self-registration only supports STUDENT role");
+        UserRole role = request.getRole() == null ? UserRole.STUDENT : request.getRole();
+
+        if (role == UserRole.COMPANY) {
+            validateInvitationCode(request.getInvitationCode(), companyInvitationCode, "COMPANY");
+        } else if (role == UserRole.ADMIN) {
+            validateInvitationCode(request.getInvitationCode(), adminInvitationCode, "ADMIN");
         }
-        role = UserRole.STUDENT;
 
         User user = new User();
         user.setEmail(normalizedEmail);
@@ -50,6 +62,19 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
         return buildAuthResponse(savedUser);
+    }
+
+    private void validateInvitationCode(String providedCode, String expectedCode, String role) {
+        if (expectedCode == null || expectedCode.isBlank()) {
+            throw new IllegalArgumentException(role + " registration is disabled");
+        }
+
+        String sanitizedProvided = providedCode == null ? "" : providedCode.trim();
+        byte[] providedBytes = sanitizedProvided.getBytes(StandardCharsets.UTF_8);
+        byte[] expectedBytes = expectedCode.trim().getBytes(StandardCharsets.UTF_8);
+        if (!MessageDigest.isEqual(providedBytes, expectedBytes)) {
+            throw new IllegalArgumentException("Invalid invitation code for " + role + " registration");
+        }
     }
 
     public AuthResponse login(LoginRequest request, String clientIp) {
