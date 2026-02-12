@@ -24,7 +24,9 @@ public class DatabaseUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmailIgnoreCase(email)
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
+
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         List<GrantedAuthority> authorities = new ArrayList<>();
