@@ -35,14 +35,16 @@ public class DatabaseUserDetailsService implements UserDetailsService {
         List<GrantedAuthority> authorities = new ArrayList<>();
         Role role = user.getRole();
         if (role != null && role.getName() != null) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName()));
+            String roleName = role.getName().toUpperCase();
+            String normalizedRole = roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName;
+            authorities.add(new SimpleGrantedAuthority(normalizedRole));
         }
 
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getEmail())
                 .password(user.getPasswordHash())
                 .authorities(authorities)
-                .disabled(user.getStatus() != AccountStatus.ACTIVE)
+                .disabled(user.getStatus() != null && user.getStatus() != AccountStatus.ACTIVE)
                 .build();
     }
 }
