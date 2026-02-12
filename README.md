@@ -1,98 +1,56 @@
-# AI-Powered Education Career Intelligence Platform
+# AI Student Career Guidance Platform (Phase 0 Security Foundation)
 
-A modular Spring Boot platform that connects students, companies, and administrators through career intelligence, bursary workflows, subscriptions, notifications, and secure identity management.
+## Stack
+- Backend: Java 21, Spring Boot 3.2.8, Spring Security, JPA, PostgreSQL, Flyway, JWT (jjwt 0.12.6)
+- Frontend: React + Vite + TypeScript, Axios, React Router
+- Infra: Docker Compose (PostgreSQL 16 + Redis 7)
 
-## Project Overview
-This repository contains a modular monolith designed for rapid product delivery and clear domain boundaries. It supports student career journeys from profile building to bursary applications and company engagement.
-
-## Core Features
-- **IAM module**: JWT-based authentication, role-based access control, password reset flow.
-- **Student module**: profile management, qualifications, experiences, document metadata.
-- **Company module**: onboarding and verification queue workflow.
-- **Bursary module**: bursary creation, approval, search, and application lifecycle.
-- **Subscription module**: subscription plans, student subscriptions, payment transaction records.
-- **Notification module**: in-app notifications and outbox event processing.
-- **Analytics module**: dashboard endpoints for platform monitoring.
-
-## Architecture
-- **Style**: Modular monolith with clean boundaries.
-- **Pattern**: Domain-oriented modules with `domain`, `application`, `infrastructure`, and `api` packages.
-- **Persistence**: PostgreSQL with Flyway migrations.
-- **Caching/infra hooks**: Redis integration point.
-- **Auth**: JWT access/refresh token flow.
-
-## Technology Stack
-- Java 21
-- Spring Boot 3.2.8
-- Maven
-- PostgreSQL 17.7
-- Flyway
-- Redis
-- Docker / Docker Compose
-
-## Repository Structure
-```text
-ai-student-career-guidance-platform/
-├── README.md
-├── LICENSE
-├── CONTRIBUTING.md
-├── DOCUMENTATION.md
-├── QUICKSTART.md
-├── .gitignore
-├── backend/
-│   ├── pom.xml
-│   └── src/main/
-│       ├── java/com/edutech/platform/
-│       └── resources/
-│           ├── application.yml
-│           └── db/migration/
-└── frontend/ (future expansion)
-```
-
-## Installation & Local Development
-### 1. Clone
+## 1) Start infrastructure
 ```bash
-git clone https://github.com/arnold1990-cell/powered-education-career-intelligence-platform.git
-cd powered-education-career-intelligence-platform
+docker compose up -d
+docker compose ps
 ```
 
-### 2. Start infrastructure (optional)
+To verify PostgreSQL quickly:
 ```bash
-docker compose up -d postgres redis
+docker compose exec postgres pg_isready -U postgres -d edutech_db
 ```
 
-### 3. Run backend
+## 2) Run backend
 ```bash
 cd backend
+cp .env.example .env
+set -a && source .env && set +a
+mvn clean install
 mvn spring-boot:run
 ```
 
-## Database Schema Fix (Outbox Status)
-A new Flyway migration was added:
-- `backend/src/main/resources/db/migration/V4__add_status_to_outbox_events.sql`
+Backend runs on `http://localhost:8080`.
 
-This migration:
-1. Adds `status` column to `outbox_events`.
-2. Sets default value to `PENDING`.
-3. Creates index `idx_outbox_events_status` for status-based queries.
-4. Adds column-level comment documenting status values.
-
-To apply migrations:
+## 3) Run frontend
 ```bash
-cd backend
-mvn flyway:migrate
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
 ```
 
-## API Documentation
-- Swagger UI: `http://localhost:8080/swagger-ui.html` (or `/swagger-ui/index.html` depending on Springdoc config)
-- Postman collection: `postman_collection.json`
+Frontend runs on `http://localhost:5173`.
 
-## Contributing
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
-- coding standards
-- branching and commit conventions
-- PR checklist
-- testing expectations
+## 4) Manual test flow
+1. Open `http://localhost:5173/register`, register a `STUDENT` account.
+2. Login at `/login`.
+3. On dashboard, verify `/api/me` result is shown.
+4. Click **Student Ping** => success.
+5. Click **Admin Ping** => should return `403` for non-admin users.
 
-## License
-Distributed under the MIT License. See [LICENSE](LICENSE).
+## Auth endpoints
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/logout` (stateless stub)
+
+Protected test endpoints:
+- `GET /api/me`
+- `GET /api/student/ping`
+- `GET /api/company/ping`
+- `GET /api/admin/ping`

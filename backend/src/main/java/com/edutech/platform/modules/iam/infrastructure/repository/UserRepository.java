@@ -1,10 +1,12 @@
 package com.edutech.platform.modules.iam.infrastructure.repository;
 
-import com.edutech.platform.modules.iam.domain.entity.User;
-import java.util.Optional;
+import com.edutech.platform.modules.iam.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
-    Optional<User> findByRefreshToken(String refreshToken);
+import java.util.Optional;
+import java.util.UUID;
+
+public interface UserRepository extends JpaRepository<User, UUID> {
+    Optional<User> findByEmailIgnoreCase(String email);
+    boolean existsByEmailIgnoreCase(String email);
 }
