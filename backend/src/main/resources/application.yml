@@ -26,6 +26,9 @@ app:
   jwt:
     secret: ${JWT_SECRET}
     access-expiry-seconds: 1800
+  registration:
+    company-invitation-code: ${COMPANY_INVITATION_CODE:}
+    admin-invitation-code: ${ADMIN_INVITATION_CODE:}
 
 server:
   port: 8080

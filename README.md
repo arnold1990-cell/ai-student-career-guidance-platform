@@ -39,13 +39,14 @@ Frontend runs on `http://localhost:5173`.
 
 ## 4) Manual test flow
 1. Open `http://localhost:5173/register`, register a `STUDENT` account.
-2. Login at `/login`.
-3. On dashboard, verify `/api/me` result is shown.
-4. Click **Student Ping** => success.
-5. Click **Admin Ping** => should return `403` for non-admin users.
+2. (Optional) To self-register `COMPANY` or `ADMIN`, set `COMPANY_INVITATION_CODE` / `ADMIN_INVITATION_CODE` for backend and provide matching invitation code in register form.
+3. Login at `/login`.
+4. On dashboard, verify `/api/me` result is shown.
+5. Click **Student Ping** => success.
+6. Click **Admin Ping** => should return `403` for non-admin users.
 
 ## Auth endpoints
-- `POST /api/auth/register`
+- `POST /api/auth/register` (`COMPANY`/`ADMIN` registration requires invitation code)
 - `POST /api/auth/login`
 - `POST /api/auth/logout` (stateless stub)
 
