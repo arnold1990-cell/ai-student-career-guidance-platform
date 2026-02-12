@@ -23,6 +23,9 @@ public class JwtService {
 
     public JwtService(@Value("${app.jwt.secret}") String jwtSecret,
                       @Value("${app.jwt.access-expiry-seconds}") long accessExpirySeconds) {
+        if (jwtSecret == null || jwtSecret.trim().length() < 32) {
+            throw new IllegalArgumentException("JWT secret must be at least 32 characters");
+        }
         this.secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
         this.accessExpirySeconds = accessExpirySeconds;
     }

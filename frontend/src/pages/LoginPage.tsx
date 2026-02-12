@@ -14,8 +14,8 @@ export const LoginPage = ({
   onLogin: (state: AuthState) => void;
 }) => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('student@edutech.local');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

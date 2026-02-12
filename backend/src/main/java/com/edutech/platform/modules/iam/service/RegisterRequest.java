@@ -3,6 +3,7 @@ package com.edutech.platform.modules.iam.service;
 import com.edutech.platform.modules.iam.domain.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class RegisterRequest {
@@ -12,6 +13,10 @@ public class RegisterRequest {
 
     @NotBlank
     @Size(min = 8, max = 72)
+    @Pattern(
+        regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^\\w\\s]).+$",
+        message = "password must include upper, lower, number, and special character"
+    )
     private String password;
 
     private UserRole role;
