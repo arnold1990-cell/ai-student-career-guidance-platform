@@ -7,12 +7,21 @@ import com.edutech.platform.modules.iam.infrastructure.repository.*;
 import com.edutech.platform.shared.exception.ApiException;
 import com.edutech.platform.shared.security.JwtService;
 import java.time.Instant;
-import java.util.Optional;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -21,16 +30,19 @@ public class AuthService {
     private final AuditLoginRepository auditLoginRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
 
     public AuthService(UserRepository userRepository, RoleRepository roleRepository,
                        PasswordResetTokenRepository resetTokenRepository, AuditLoginRepository auditLoginRepository,
-                       PasswordEncoder passwordEncoder, JwtService jwtService) {
+                       PasswordEncoder passwordEncoder, JwtService jwtService,
+                       AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.resetTokenRepository = resetTokenRepository;
         this.auditLoginRepository = auditLoginRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.authenticationManager = authenticationManager;
     }
 
     public TokenResponse register(RegisterRequest request) {
@@ -63,24 +75,39 @@ public class AuthService {
 
     public TokenResponse login(LoginRequest request, String ipAddress) {
         String normalizedEmail = normalizeEmail(request.getEmail());
-        Optional<User> userOptional = userRepository.findByEmail(normalizedEmail);
-        if (userOptional.isEmpty()) {
+        UsernamePasswordAuthenticationToken authenticationToken =
+                new UsernamePasswordAuthenticationToken(normalizedEmail, request.getPassword());
+
+        try {
+            Authentication authentication = authenticationManager.authenticate(authenticationToken);
+            String authenticatedEmail = normalizeEmail(authentication.getName());
+            User user = userRepository.findByEmail(authenticatedEmail)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found after authentication"));
+
+            if (user.getStatus() != AccountStatus.ACTIVE) {
+                auditLogin(authenticatedEmail, false, ipAddress);
+                throw new ApiException("Account is not active");
+            }
+
+            String refresh = UUID.randomUUID().toString();
+            user.setRefreshToken(refresh);
+            userRepository.save(user);
+            auditLogin(authenticatedEmail, true, ipAddress);
+            String accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().getName());
+            return new TokenResponse(accessToken, refresh);
+        } catch (BadCredentialsException ex) {
             auditLogin(normalizedEmail, false, ipAddress);
+            log.warn("Bad credentials for email={} ip={}", normalizedEmail, ipAddress);
             throw new ApiException("Invalid credentials");
-        }
-        User user = userOptional.get();
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        } catch (DisabledException | LockedException ex) {
             auditLogin(normalizedEmail, false, ipAddress);
-            throw new ApiException("Invalid credentials");
-        }
-        if (user.getStatus() != AccountStatus.ACTIVE) {
+            log.warn("Account not allowed to authenticate for email={} ip={} reason={}", normalizedEmail, ipAddress, ex.getClass().getSimpleName());
             throw new ApiException("Account is not active");
+        } catch (AuthenticationException ex) {
+            auditLogin(normalizedEmail, false, ipAddress);
+            log.error("Authentication failed for email={} ip={} reason={}", normalizedEmail, ipAddress, ex.getMessage());
+            throw new ApiException("Authentication failed");
         }
-        String refresh = UUID.randomUUID().toString();
-        user.setRefreshToken(refresh);
-        userRepository.save(user);
-        auditLogin(normalizedEmail, true, ipAddress);
-        return new TokenResponse(jwtService.generateAccessToken(user.getId(), user.getEmail(), user.getRole().getName()), refresh);
     }
 
     public TokenResponse refresh(RefreshRequest request) {
