@@ -2,12 +2,13 @@ spring:
   profiles:
     active: dev
   datasource:
-    url: jdbc:postgresql://localhost:5432/edutech
-    username: edutech
-    password: edutech
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/edutech_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
   jpa:
     hibernate:
       ddl-auto: validate
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
@@ -16,15 +17,13 @@ spring:
     locations: classpath:db/migration
   data:
     redis:
-      host: localhost
-      port: 6379
+      repositories:
+        enabled: false
 
 app:
   jwt:
-    secret: 1234567890123456789012345678901234567890123456789012345678901234
+    secret: ${JWT_SECRET:1234567890123456789012345678901234567890123456789012345678901234}
     access-expiry-seconds: 1800
-  uploads:
-    max-size-bytes: 5242880
 
 server:
   port: 8080

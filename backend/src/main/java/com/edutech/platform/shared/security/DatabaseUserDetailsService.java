@@ -1,18 +1,17 @@
 package com.edutech.platform.shared.security;
 
-import com.edutech.platform.modules.iam.domain.entity.Role;
-import com.edutech.platform.modules.iam.domain.entity.User;
-import com.edutech.platform.modules.iam.domain.enums.AccountStatus;
+import com.edutech.platform.modules.iam.domain.User;
+import com.edutech.platform.modules.iam.domain.UserStatus;
 import com.edutech.platform.modules.iam.infrastructure.repository.UserRepository;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class DatabaseUserDetailsService implements UserDetailsService {
@@ -25,26 +24,17 @@ public class DatabaseUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        String normalizedEmail = email == null ? null : email.trim().toLowerCase();
-        Optional<User> userOptional = userRepository.findByEmail(normalizedEmail);
-        if (userOptional.isEmpty()) {
-            throw new UsernameNotFoundException("User not found: " + email);
-        }
-        User user = userOptional.get();
+        User user = userRepository.findByEmailIgnoreCase(email)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         List<GrantedAuthority> authorities = new ArrayList<>();
-        Role role = user.getRole();
-        if (role != null && role.getName() != null) {
-            String roleName = role.getName().toUpperCase();
-            String normalizedRole = roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName;
-            authorities.add(new SimpleGrantedAuthority(normalizedRole));
-        }
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
 
-        return org.springframework.security.core.userdetails.User
-                .withUsername(user.getEmail())
-                .password(user.getPasswordHash())
-                .authorities(authorities)
-                .disabled(user.getStatus() != null && user.getStatus() != AccountStatus.ACTIVE)
-                .build();
+        return org.springframework.security.core.userdetails.User.builder()
+            .username(user.getEmail())
+            .password(user.getPasswordHash())
+            .authorities(authorities)
+            .disabled(user.getStatus() == UserStatus.DISABLED)
+            .build();
     }
 }
