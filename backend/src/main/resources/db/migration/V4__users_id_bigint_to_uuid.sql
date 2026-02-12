@@ -1,8 +1,6 @@
 -- Migrates users.id from bigint/integer to UUID and rewires every FK that points to users(id).
 -- Safe to run on databases where users.id is already UUID (no-op).
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 DO $$
 DECLARE
     users_id_type text;
@@ -28,6 +26,13 @@ BEGIN
     IF users_id_type NOT IN ('bigint', 'integer') THEN
         RAISE EXCEPTION 'Unsupported users.id type: %', users_id_type;
     END IF;
+
+    BEGIN
+        CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    EXCEPTION
+        WHEN insufficient_privilege THEN
+            RAISE EXCEPTION 'users.id requires bigint->uuid migration but pgcrypto extension could not be created due to insufficient privileges';
+    END;
 
     CREATE TEMP TABLE tmp_users_fk_refs (
         constraint_name text NOT NULL,
